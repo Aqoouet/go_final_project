@@ -1,3 +1,4 @@
+// Package handlers exposes HTTP endpoints for task management and scheduling utilities.
 package handlers
 
 import (
@@ -7,7 +8,6 @@ import (
 	"go_final_project/internal/utils"
 )
 
-// TaskHandler routes /api/task requests based on HTTP method
 func TaskHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -23,16 +23,13 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleDeleteTask processes DELETE requests to remove a task
 func handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 
-	// Delete task from database
 	if err := database.DeleteTask(id); err != nil {
 		utils.WriteError(w, err.Error())
 		return
 	}
 
-	// Return empty JSON on success
 	utils.WriteEmptySuccess(w)
 }

@@ -1,3 +1,4 @@
+// Package handlers exposes HTTP endpoints for task management and scheduling utilities.
 package handlers
 
 import (
@@ -8,11 +9,6 @@ import (
 	"go_final_project/internal/utils"
 )
 
-// NextDateHandler handles GET /api/nextdate
-// Query parameters:
-//   - now: current date reference (optional, defaults to current time)
-//   - date: initial date in YYYYMMDD format (required)
-//   - repeat: repetition rule (required)
 func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 	nowStr := r.FormValue("now")
 	dateStr := r.FormValue("date")
@@ -21,7 +17,6 @@ func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 	var now time.Time
 	var err error
 
-	// Parse "now" parameter or use current time
 	if nowStr == "" {
 		now = time.Now()
 	} else {
@@ -32,7 +27,6 @@ func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Calculate next date using the service
 	calculator := services.NewNextDateCalculator()
 	nextDate, err := calculator.Calculate(now, dateStr, repeat)
 

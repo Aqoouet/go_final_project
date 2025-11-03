@@ -1,3 +1,4 @@
+// Package main starts the HTTP server, initializes configuration and database, and registers HTTP handlers.
 package main
 
 import (
@@ -11,10 +12,8 @@ import (
 )
 
 func main() {
-	// Load configuration from environment variables
 	cfg := config.LoadConfig()
 
-	// Initialize database connection
 	if err := database.Init(cfg.DBFile); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -22,16 +21,13 @@ func main() {
 
 	log.Printf("Database initialized: %s", cfg.DBFile)
 
-	// Register API handlers
 	http.HandleFunc("/api/nextdate", handlers.NextDateHandler)
 	http.HandleFunc("/api/task", handlers.TaskHandler)
 	http.HandleFunc("/api/tasks", handlers.TasksHandler)
 	http.HandleFunc("/api/task/done", handlers.DoneTaskHandler)
 
-	// Serve static files from web directory
 	http.Handle("/", http.FileServer(http.Dir(cfg.WebDir)))
 
-	// Start HTTP server
 	port := fmt.Sprintf(":%d", cfg.Port)
 	log.Printf("Starting server at http://localhost%s", port)
 
