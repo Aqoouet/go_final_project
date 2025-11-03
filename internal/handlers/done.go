@@ -2,58 +2,56 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"go_final_project/internal/database"
+	"go_final_project/internal/services"
+	"go_final_project/internal/utils"
 )
 
-// DoneTaskHandler обрабатывает POST-запросы для отметки задачи как выполненной
+// DoneTaskHandler processes POST requests to mark a task as completed
 func DoneTaskHandler(w http.ResponseWriter, r *http.Request) {
-	// Получаем ID из параметров запроса
 	id := r.URL.Query().Get("id")
-	
-	// Получаем задачу из базы данных
+
+	// Retrieve task from database
 	task, err := database.GetTask(id)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
+		utils.WriteError(w, err.Error())
 		return
 	}
-	
-	// Если правило повторения отсутствует - удаляем задачу
+
+	// If no repetition rule exists - delete the task
 	if task.Repeat == "" {
 		if err := database.DeleteTask(id); err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()})
+			utils.WriteError(w, err.Error())
 			return
 		}
-		// Возвращаем пустой JSON при успехе
-		writeJSON(w, map[string]string{})
+		utils.WriteEmptySuccess(w)
 		return
 	}
-	
-	// Для периодической задачи вычисляем следующую дату
-	// Парсим текущую дату задачи
-	taskDate, err := time.Parse(DateFormat, task.Date)
-	if err != nil {
-		writeJSON(w, map[string]string{"error": "неверный формат даты"})
-		return
-	}
-	
-	// Используем дату задачи + 1 день как базу для расчета следующей даты
-	// Это гарантирует, что NextDate вычислит следующий интервал после текущей даты задачи
-	nextDateBase := taskDate.AddDate(0, 0, 1)
-	nextDate, err := NextDate(nextDateBase, task.Date, task.Repeat)
-	if err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
-		return
-	}
-	
-	// Обновляем дату задачи
-	if err := database.UpdateTaskDate(id, nextDate); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
-		return
-	}
-	
-	// Возвращаем пустой JSON при успехе
-	writeJSON(w, map[string]string{})
-}
 
+	// For recurring tasks, calculate the next date
+	taskDate, err := utils.ParseDate(task.Date)
+	if err != nil {
+		utils.WriteError(w, "invalid date format")
+		return
+	}
+
+	// Use task date + 1 day as the base for calculating next date
+	// This ensures NextDate computes the next interval after the current task date
+	nextDateBase := taskDate.AddDate(0, 0, 1)
+	calculator := services.NewNextDateCalculator()
+	nextDate, err := calculator.Calculate(nextDateBase, task.Date, task.Repeat)
+	if err != nil {
+		utils.WriteError(w, err.Error())
+		return
+	}
+
+	// Update task date
+	if err := database.UpdateTaskDate(id, nextDate); err != nil {
+		utils.WriteError(w, err.Error())
+		return
+	}
+
+	// Return empty JSON on success
+	utils.WriteEmptySuccess(w)
+}

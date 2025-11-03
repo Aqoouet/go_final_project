@@ -5,28 +5,29 @@ import (
 
 	"go_final_project/internal/database"
 	"go_final_project/internal/models"
+	"go_final_project/internal/utils"
 )
 
-// TasksResponse представляет ответ со списком задач
+// TasksResponse represents the response structure for the tasks list
 type TasksResponse struct {
 	Tasks []*models.Task `json:"tasks"`
 }
 
-// TasksHandler обрабатывает GET-запросы для получения списка задач
+// TasksHandler processes GET requests to retrieve a list of tasks
+// Query parameters:
+//   - search: optional search string (searches by title, comment, or date)
 func TasksHandler(w http.ResponseWriter, r *http.Request) {
-	// Получаем параметр search из URL (если есть)
 	search := r.URL.Query().Get("search")
 
-	// Получаем список задач (ограничиваем 50 записями)
+	// Retrieve tasks list (limited to 50 records)
 	tasks, err := database.Tasks(50, search)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
+		utils.WriteError(w, err.Error())
 		return
 	}
 
-	// Возвращаем список задач
-	writeJSON(w, TasksResponse{
+	// Return tasks list
+	utils.WriteJSON(w, TasksResponse{
 		Tasks: tasks,
 	})
 }
-

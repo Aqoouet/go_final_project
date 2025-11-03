@@ -8,93 +8,143 @@ import (
 
 	"go_final_project/internal/database"
 	"go_final_project/internal/models"
+	"go_final_project/internal/services"
+	"go_final_project/internal/utils"
 )
 
-// AddTaskHandler обрабатывает POST-запросы для добавления новой задачи
-func AddTaskHandler(w http.ResponseWriter, r *http.Request) {
+// handleAddTask processes POST requests to add a new task
+func handleAddTask(w http.ResponseWriter, r *http.Request) {
 	var task models.Task
 
-	// Десериализация JSON
+	// Decode JSON request body
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
+		utils.WriteError(w, err.Error())
 		return
 	}
 
-	// Проверка обязательного поля title
+	// Validate required field
 	if task.Title == "" {
-		writeJSON(w, map[string]string{"error": "не указан заголовок задачи"})
+		utils.WriteError(w, "task title is required")
 		return
 	}
 
-	// Проверка и обработка даты
-	if err := checkDate(&task); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
+	// Validate and adjust task date
+	if err := validateAndAdjustTaskDate(&task); err != nil {
+		utils.WriteError(w, err.Error())
 		return
 	}
 
-	// Добавление задачи в базу данных
+	// Add task to database
 	id, err := database.AddTask(&task)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
+		utils.WriteError(w, err.Error())
 		return
 	}
 
-	// Возврат идентификатора добавленной задачи
-	writeJSON(w, map[string]string{"id": fmt.Sprint(id)})
+	// Return the ID of the created task
+	utils.WriteJSON(w, map[string]string{"id": fmt.Sprint(id)})
 }
 
-// checkDate проверяет и корректирует дату задачи
-func checkDate(task *models.Task) error {
+// handleGetTask processes GET requests to retrieve a task by ID
+func handleGetTask(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+
+	// Retrieve task from database
+	task, err := database.GetTask(id)
+	if err != nil {
+		utils.WriteError(w, err.Error())
+		return
+	}
+
+	// Return the task
+	utils.WriteJSON(w, task)
+}
+
+// handleUpdateTask processes PUT requests to update an existing task
+func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
+	var task models.Task
+
+	// Decode JSON request body
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		utils.WriteError(w, err.Error())
+		return
+	}
+
+	// Validate required field
+	if task.Title == "" {
+		utils.WriteError(w, "task title is required")
+		return
+	}
+
+	// Validate and adjust task date
+	if err := validateAndAdjustTaskDate(&task); err != nil {
+		utils.WriteError(w, err.Error())
+		return
+	}
+
+	// Update task in database
+	if err := database.UpdateTask(&task); err != nil {
+		utils.WriteError(w, err.Error())
+		return
+	}
+
+	// Return empty JSON on success
+	utils.WriteEmptySuccess(w)
+}
+
+// validateAndAdjustTaskDate validates and adjusts the task date
+func validateAndAdjustTaskDate(task *models.Task) error {
 	now := time.Now()
 
-	// Если дата не указана, берём сегодняшнюю
+	// If date is not specified, use today
 	if task.Date == "" {
-		task.Date = now.Format(DateFormat)
+		task.Date = utils.FormatDate(now)
 		return nil
 	}
 
-	// Проверяем корректность формата даты
-	taskDate, err := time.Parse(DateFormat, task.Date)
+	// Validate date format
+	taskDate, err := utils.ParseDate(task.Date)
 	if err != nil {
-		return fmt.Errorf("дата представлена в неправильном формате")
+		return fmt.Errorf("date is in incorrect format")
 	}
 
-	// Если правило повторения указано, проверяем его корректность
+	// If repetition rule is specified, validate it
 	if task.Repeat != "" {
-		_, err = NextDate(now, task.Date, task.Repeat)
+		calculator := services.NewNextDateCalculator()
+		_, err = calculator.Calculate(now, task.Date, task.Repeat)
 		if err != nil {
-			return fmt.Errorf("правило повторения указано в неправильном формате")
+			return fmt.Errorf("repeat rule is in incorrect format")
 		}
 	}
 
-	// Если дата задачи меньше сегодняшней
-	if afterNow(now, taskDate) {
+	// If task date is in the past
+	if utils.IsAfter(now, taskDate) {
 		if task.Repeat == "" {
-			// Нет правила повторения - берём сегодняшнюю дату
-			task.Date = now.Format(DateFormat)
+			// No repetition rule - use today's date
+			task.Date = utils.FormatDate(now)
 		} else {
-			// Есть правило повторения - вычисляем следующую дату после now
-			// Вызываем NextDate в цикле, пока не получим дату >= now
+			// Has repetition rule - calculate next valid date
+			calculator := services.NewNextDateCalculator()
 			currentDate := task.Date
 			for {
-				nextDate, err := NextDate(now, currentDate, task.Repeat)
+				nextDate, err := calculator.Calculate(now, currentDate, task.Repeat)
 				if err != nil {
-					return fmt.Errorf("ошибка вычисления следующей даты")
+					return fmt.Errorf("error calculating next date")
 				}
-				
-				// Парсим следующую дату
-				nextTime, err := time.Parse(DateFormat, nextDate)
+
+				// Parse the next date
+				nextTime, err := utils.ParseDate(nextDate)
 				if err != nil {
-					return fmt.Errorf("ошибка парсинга даты")
+					return fmt.Errorf("error parsing date")
 				}
-				
-				// Если следующая дата >= now, используем её
-				if !afterNow(now, nextTime) {
+
+				// If next date is >= now, use it
+				if !utils.IsAfter(now, nextTime) {
 					task.Date = nextDate
 					break
 				}
-				
-				// Иначе продолжаем с этой даты
+
+				// Otherwise continue with this date
 				currentDate = nextDate
 			}
 		}
@@ -102,61 +152,3 @@ func checkDate(task *models.Task) error {
 
 	return nil
 }
-
-// GetTaskHandler обрабатывает GET-запросы для получения задачи по ID
-func GetTaskHandler(w http.ResponseWriter, r *http.Request) {
-	// Получаем ID из параметров запроса
-	id := r.URL.Query().Get("id")
-	
-	// Получаем задачу из базы данных
-	task, err := database.GetTask(id)
-	if err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
-		return
-	}
-	
-	// Возвращаем задачу
-	writeJSON(w, task)
-}
-
-// UpdateTaskHandler обрабатывает PUT-запросы для обновления существующей задачи
-func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
-	var task models.Task
-	
-	// Десериализация JSON
-	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
-		return
-	}
-	
-	// Проверка обязательного поля title
-	if task.Title == "" {
-		writeJSON(w, map[string]string{"error": "не указан заголовок задачи"})
-		return
-	}
-	
-	// Проверка и обработка даты
-	if err := checkDate(&task); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
-		return
-	}
-	
-	// Обновление задачи в базе данных
-	if err := database.UpdateTask(&task); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
-		return
-	}
-	
-	// Возврат пустого JSON-объекта при успехе
-	writeJSON(w, map[string]string{})
-}
-
-// writeJSON сериализует данные в JSON и отправляет их клиенту
-func writeJSON(w http.ResponseWriter, data any) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-

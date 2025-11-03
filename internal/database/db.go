@@ -22,36 +22,37 @@ CREATE INDEX IF NOT EXISTS idx_date ON scheduler(date);
 
 var db *sql.DB
 
-// Init initialize connection to db
-// if db file does not exist, create it and create table inside
+// Init initializes the database connection.
+// If the database file does not exist, it creates it and sets up the schema.
+//
+// Possible errors:
+//   - Wrong driver name
+//   - Driver initialization problems
+//   - Database file is locked by another process
+//   - Incorrect database file format
+//   - Invalid path to database file
+//   - Insufficient permissions to create database file
+//   - Insufficient disk space
 func Init(dbFile string) error {
-
 	_, err := os.Stat(dbFile)
 	install := false
 	if err != nil {
 		install = true
 	}
 
-	// can catch:
-	//	- wrong driver name
-	//	- problems with driver
-	db, err = sql.Open ("sqlite", dbFile)
-	if err!=nil {
+	db, err = sql.Open("sqlite", dbFile)
+	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// can catch:
-	//	- DBFile is blocked by another process
-	//	- incorrect (wrong format) or empty dbFile
-	//	- incorrect path to dbFile
-	//	- not enough permissions to create dbFile
-	//	- not enough disc space
+	// Verify connection is valid
 	if err = db.Ping(); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// Create schema if this is a new database
 	if install {
-		if _, err = db.Exec(schema); err!=nil {
+		if _, err = db.Exec(schema); err != nil {
 			return fmt.Errorf("failed to create schema: %w", err)
 		}
 	}
@@ -59,12 +60,14 @@ func Init(dbFile string) error {
 	return nil
 }
 
+// GetDB returns the active database connection
 func GetDB() *sql.DB {
 	return db
 }
 
+// Close closes the database connection
 func Close() error {
-	if db!= nil {
+	if db != nil {
 		return db.Close()
 	}
 	return nil
