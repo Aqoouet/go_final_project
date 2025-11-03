@@ -26,3 +26,9 @@ func WriteEmptySuccess(w http.ResponseWriter) {
 	WriteJSON(w, map[string]string{})
 }
 
+func RespondWithError(w http.ResponseWriter, errorMsg string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(ErrorResponse{Error: errorMsg})
+}
+

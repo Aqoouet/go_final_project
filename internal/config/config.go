@@ -13,9 +13,10 @@ const (
 )
 
 type Config struct {
-    Port   int
-    WebDir string
-    DBFile string
+    Port     int
+    WebDir   string
+    DBFile   string
+    Password string
 }
 
 func LoadConfig() *Config {
@@ -33,6 +34,10 @@ func LoadConfig() *Config {
 
 	if dbFile := os.Getenv("TODO_DBFILE"); dbFile != "" {
 		cfg.DBFile = dbFile
+	}
+
+	if password := os.Getenv("TODO_PASSWORD"); password != "" {
+		cfg.Password = password
 	}
 
 	return cfg
