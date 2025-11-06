@@ -11,26 +11,20 @@ import (
 )
 
 const (
-	// TokenExpiration defines the JWT token expiration time (8 hours)
 	TokenExpiration = 8 * time.Hour
-	
-	// SecretKey is used to sign JWT tokens
 	secretKey = "your-secret-key-change-in-production"
 )
 
-// Claims represents the JWT claims structure
 type Claims struct {
 	PasswordHash string `json:"password_hash"`
 	jwt.RegisteredClaims
 }
 
-// HashPassword creates a SHA-256 hash of the password
 func HashPassword(password string) string {
 	hash := sha256.Sum256([]byte(password))
 	return hex.EncodeToString(hash[:])
 }
 
-// GenerateToken creates a new JWT token for the given password
 func GenerateToken(password string) (string, error) {
 	passwordHash := HashPassword(password)
 	
@@ -46,7 +40,6 @@ func GenerateToken(password string) (string, error) {
 	return token.SignedString([]byte(secretKey))
 }
 
-// ValidateToken validates the JWT token and checks if the password hash matches
 func ValidateToken(tokenString string, currentPassword string) (bool, error) {
 	if tokenString == "" {
 		return false, errors.New("token is empty")
@@ -69,7 +62,6 @@ func ValidateToken(tokenString string, currentPassword string) (bool, error) {
 		return false, errors.New("invalid token")
 	}
 	
-	// Check if the password has changed by comparing hashes
 	currentHash := HashPassword(currentPassword)
 	if claims.PasswordHash != currentHash {
 		return false, errors.New("password has changed")
