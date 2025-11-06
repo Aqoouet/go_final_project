@@ -10,20 +10,23 @@ const (
 	DefaultPort = 7540
 	DefaultWebDir = "./web"
 	DefaultDBFile = "scheduler.db"
+	DefaultJWTSecretKey = "sercet-key-value-for-tests"
 )
 
 type Config struct {
-    Port     int
-    WebDir   string
-    DBFile   string
-    Password string
+    Port         int
+    WebDir       string
+    DBFile       string
+    Password     string
+    JWTSecretKey string
 }
 
 func LoadConfig() *Config {
 	cfg := &Config{
-		Port:   DefaultPort,
-		WebDir: DefaultWebDir,
-		DBFile: DefaultDBFile,
+		Port:         DefaultPort,
+		WebDir:       DefaultWebDir,
+		DBFile:       DefaultDBFile,
+		JWTSecretKey: DefaultJWTSecretKey,
 	}
 
 	if portStr := os.Getenv("TODO_PORT"); portStr != "" {
@@ -38,6 +41,10 @@ func LoadConfig() *Config {
 
 	if password := os.Getenv("TODO_PASSWORD"); password != "" {
 		cfg.Password = password
+	}
+
+	if jwtKey := os.Getenv("JWT_SECRET_KEY"); jwtKey != "" {
+		cfg.JWTSecretKey = jwtKey
 	}
 
 	return cfg

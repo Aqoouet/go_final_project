@@ -22,18 +22,16 @@ func main() {
 
 	log.Printf("Database initialized: %s", cfg.DBFile)
 
-	// Authentication endpoint (no auth required)
-	http.HandleFunc("/api/signin", handlers.SignInHandler)
-	
-	// Public endpoint (no auth required)
-	http.HandleFunc("/api/nextdate", handlers.NextDateHandler)
-	
-	// Protected endpoints (auth required if TODO_PASSWORD is set)
-	http.HandleFunc("/api/task", auth.Middleware(handlers.TaskHandler))
-	http.HandleFunc("/api/tasks", auth.Middleware(handlers.TasksHandler))
-	http.HandleFunc("/api/task/done", auth.Middleware(handlers.DoneTaskHandler))
+	authMiddleware := auth.Middleware(cfg)
 
-	// Static files
+	http.HandleFunc("/api/signin", handlers.SignInHandler(cfg))
+	
+	http.HandleFunc("/api/nextdate", handlers.NextDateHandler)
+
+	http.HandleFunc("/api/task", authMiddleware(handlers.TaskHandler))
+	http.HandleFunc("/api/tasks", authMiddleware(handlers.TasksHandler))
+	http.HandleFunc("/api/task/done", authMiddleware(handlers.DoneTaskHandler))
+
 	http.Handle("/", http.FileServer(http.Dir(cfg.WebDir)))
 
 	port := fmt.Sprintf(":%d", cfg.Port)

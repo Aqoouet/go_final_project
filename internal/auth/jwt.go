@@ -12,7 +12,6 @@ import (
 
 const (
 	TokenExpiration = 8 * time.Hour
-	secretKey = "your-secret-key-change-in-production"
 )
 
 type Claims struct {
@@ -25,7 +24,7 @@ func HashPassword(password string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func GenerateToken(password string) (string, error) {
+func GenerateToken(password string, secretKey string) (string, error) {
 	passwordHash := HashPassword(password)
 	
 	claims := Claims{
@@ -40,7 +39,7 @@ func GenerateToken(password string) (string, error) {
 	return token.SignedString([]byte(secretKey))
 }
 
-func ValidateToken(tokenString string, currentPassword string) (bool, error) {
+func ValidateToken(tokenString string, currentPassword string, secretKey string) (bool, error) {
 	if tokenString == "" {
 		return false, errors.New("token is empty")
 	}
