@@ -29,4 +29,4 @@ jobs:
         kill $SERVER_PID || true
       env:
         TODO_PORT: 7540
-        TODO_DBFILE: test_scheduler.db
+        TODO_DBFILE: ${{ github.workspace }}/test_scheduler.db
