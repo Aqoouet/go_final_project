@@ -1,15 +1,11 @@
-name: Go
+name: Go Tests
 
 on: [push]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        go-version: [1.24.x]
-  
+    
     steps:
     - uses: actions/checkout@v4
 
@@ -17,17 +13,20 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.24.x'
-        
-    - name: Display Go version
-      run: go version
 
-    - name: Install dependencies
-      run: go mod tidy
+    - name: Download dependencies
+      run: go mod download
 
-    - name: Run local server
+    - name: Build application
+      run: CGO_ENABLED=0 go build -o scheduler ./cmd/scheduler
+
+    - name: Run tests
       run: |
-        CGO_ENABLED=0 GOOS=linux go run main.go &
-        sleep 100
-        go test -run ^TestApp$ ./tests
-        
-        
+        ./scheduler &
+        SERVER_PID=$!
+        sleep 2
+        go test ./tests/... -v
+        kill $SERVER_PID || true
+      env:
+        TODO_PORT: 7540
+        TODO_DBFILE: ${{ github.workspace }}/test_scheduler.db

@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+cd "$(dirname "$0")/.."
+
+PORT=${1:-7540}
+
+docker build --build-arg DEFAULT_PORT=$PORT -t scheduler:latest .
+
+echo "✓ Built scheduler:latest with port $PORT"

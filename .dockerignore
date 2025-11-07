@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Database files
+*.db
+
+# Binaries
+scheduler
+
+# Tests
+tests/
+
+# Scripts
+scripts/
+
+# Documentation
+README.md
+
+# IDE
+.vscode/
+.idea/
+
