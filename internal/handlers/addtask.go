@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,23 +18,23 @@ func handleAddTask(w http.ResponseWriter, r *http.Request) {
 	var task models.Task
 
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		utils.WriteError(w, err.Error())
+		utils.RespondWithError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if task.Title == "" {
-		utils.WriteError(w, "task title is required")
+		utils.RespondWithError(w, "task title is required", http.StatusBadRequest)
 		return
 	}
 
 	if err := validateAndAdjustTaskDate(&task); err != nil {
-		utils.WriteError(w, err.Error())
+		utils.RespondWithError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	id, err := database.AddTask(&task)
 	if err != nil {
-		utils.WriteError(w, err.Error())
+		utils.RespondWithError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -45,7 +46,13 @@ func handleGetTask(w http.ResponseWriter, r *http.Request) {
 
 	task, err := database.GetTask(id)
 	if err != nil {
-		utils.WriteError(w, err.Error())
+		statusCode := http.StatusInternalServerError
+		if errors.Is(err, database.ErrTaskNotFound) {
+			statusCode = http.StatusNotFound
+		} else if errors.Is(err, database.ErrEmptyID) {
+			statusCode = http.StatusBadRequest
+		}
+		utils.RespondWithError(w, err.Error(), statusCode)
 		return
 	}
 
@@ -56,22 +63,31 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 	var task models.Task
 
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		utils.WriteError(w, err.Error())
+		utils.RespondWithError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if task.ID == "" {
+		utils.RespondWithError(w, "task id is required", http.StatusBadRequest)
 		return
 	}
 
 	if task.Title == "" {
-		utils.WriteError(w, "task title is required")
+		utils.RespondWithError(w, "task title is required", http.StatusBadRequest)
 		return
 	}
 
 	if err := validateAndAdjustTaskDate(&task); err != nil {
-		utils.WriteError(w, err.Error())
+		utils.RespondWithError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if err := database.UpdateTask(&task); err != nil {
-		utils.WriteError(w, err.Error())
+		statusCode := http.StatusInternalServerError
+		if errors.Is(err, database.ErrTaskNotFound) {
+			statusCode = http.StatusNotFound
+		}
+		utils.RespondWithError(w, err.Error(), statusCode)
 		return
 	}
 
@@ -105,7 +121,9 @@ func validateAndAdjustTaskDate(task *models.Task) error {
 		} else {
 			calculator := services.NewNextDateCalculator()
 			currentDate := task.Date
-			for {
+			const maxIterations = 1000
+			
+			for i := 0; i < maxIterations; i++ {
 				nextDate, err := calculator.Calculate(now, currentDate, task.Repeat)
 				if err != nil {
 					return fmt.Errorf("error calculating next date")
@@ -118,11 +136,13 @@ func validateAndAdjustTaskDate(task *models.Task) error {
 
 				if !utils.IsAfter(now, nextTime) {
 					task.Date = nextDate
-					break
+					return nil
 				}
 
 				currentDate = nextDate
 			}
+			
+			return fmt.Errorf("unable to find future date within reasonable iterations")
 		}
 	}
 

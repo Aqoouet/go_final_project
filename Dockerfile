@@ -20,6 +20,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o scheduler ./cmd/scheduler
 # Stage 2: Create minimal runtime image
 FROM alpine:latest
 
+# Define build argument with default value
+ARG DEFAULT_PORT=7540
+
 WORKDIR /app
 
 # Copy the binary from builder
@@ -29,11 +32,11 @@ COPY --from=builder /app/scheduler .
 COPY web ./web
 
 # Set environment variables with defaults
-ENV TODO_PORT=7540
+ENV TODO_PORT=${DEFAULT_PORT}
 ENV TODO_DBFILE=/data/scheduler.db
 
-# Expose the port
-EXPOSE 7540
+# Expose the port (using ARG)
+EXPOSE ${DEFAULT_PORT}
 
 # Create data directory for database
 RUN mkdir -p /data

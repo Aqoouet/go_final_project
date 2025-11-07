@@ -29,6 +29,8 @@ func WriteEmptySuccess(w http.ResponseWriter) {
 func RespondWithError(w http.ResponseWriter, errorMsg string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(ErrorResponse{Error: errorMsg})
+	if err := json.NewEncoder(w).Encode(ErrorResponse{Error: errorMsg}); err != nil {
+		http.Error(w, "Failed to encode error response", http.StatusInternalServerError)
+	}
 }
 

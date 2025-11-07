@@ -10,18 +10,15 @@ import (
 	"go_final_project/internal/utils"
 )
 
-// SignInRequest represents the signin request payload
 type SignInRequest struct {
 	Password string `json:"password"`
 }
 
-// SignInResponse represents the successful signin response
 type SignInResponse struct {
 	Token string `json:"token,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 
-// SignInHandler handles POST /api/signin - authenticates user with password
 func SignInHandler(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

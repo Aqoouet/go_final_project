@@ -10,6 +10,11 @@ import (
 )
 
 func NextDateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		utils.RespondWithError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	nowStr := r.FormValue("now")
 	dateStr := r.FormValue("date")
 	repeat := r.FormValue("repeat")
@@ -22,7 +27,7 @@ func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		now, err = time.Parse(utils.DateFormat, nowStr)
 		if err != nil {
-			http.Error(w, "Invalid format for date \"now\"", http.StatusBadRequest)
+			utils.RespondWithError(w, "Invalid format for date \"now\"", http.StatusBadRequest)
 			return
 		}
 	}
@@ -31,10 +36,13 @@ func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 	nextDate, err := calculator.Calculate(now, dateStr, repeat)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.RespondWithError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte(nextDate))
+	if _, err := w.Write([]byte(nextDate)); err != nil {
+		utils.RespondWithError(w, "Failed to write response", http.StatusInternalServerError)
+		return
+	}
 }

@@ -12,6 +12,11 @@ import (
 func DoneTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 
+	if id == "" {
+		utils.WriteError(w, "task id is required")
+		return
+	}
+
 	task, err := database.GetTask(id)
 	if err != nil {
 		utils.WriteError(w, err.Error())

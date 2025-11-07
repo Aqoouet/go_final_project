@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	DateFormat = "20060102"
+)
+
 var (
 	ErrTaskNotFound = errors.New("task not found")
 	ErrEmptyID      = errors.New("task ID is required")
@@ -36,7 +40,7 @@ func Tasks(limit int, search string) ([]*models.Task, error) {
 
 	if search != "" {
 		if date, err := time.Parse("02.01.2006", search); err == nil {
-			dateStr := date.Format("20060102")
+			dateStr := date.Format(DateFormat)
 			query := `SELECT id, date, title, comment, repeat FROM scheduler WHERE date = ? ORDER BY date LIMIT ?`
 			rows, err = db.Query(query, dateStr, limit)
 		} else {
@@ -94,10 +98,6 @@ func GetTask(id string) (*models.Task, error) {
 }
 
 func UpdateTask(task *models.Task) error {
-	if task.ID == "" {
-		return ErrEmptyID
-	}
-
 	query := `UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?`
 
 	res, err := db.Exec(query, task.Date, task.Title, task.Comment, task.Repeat, task.ID)
