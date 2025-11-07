@@ -2,3 +2,10 @@
 
 scripts/kill
 
+# Binaries
+scheduler
+
+# Database files
+*.db
+scheduler.db
+test_scheduler.db
